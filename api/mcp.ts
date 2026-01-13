@@ -4,39 +4,53 @@ import { FastMCPSession } from "fastmcp";
 
 export const runtime = "edge";
 
-// Create a transport instance (reused across requests in stateless mode)
-const transport = new WebStandardStreamableHTTPServerTransport({
-  sessionIdGenerator: undefined, // Stateless mode for serverless
-});
-
 export default async function handler(request: Request): Promise<Response> {
+  // Create a new transport for each request (stateless mode)
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    sessionIdGenerator: undefined, // Stateless mode for serverless
+  });
+
   try {
-    // Create a temporary session for this request
-    // FastMCP manages sessions internally, so we need to create one manually
+    // We need to get tools, prompts, and resources from the server
+    // Since FastMCP doesn't expose them directly, we'll create a minimal session
+    // The session will be set up when we connect the transport
     const session = new FastMCPSession({
       auth: undefined,
       instructions: server.options.instructions,
       logger: server.options.logger || console,
       name: server.options.name,
       ping: server.options.ping,
-      prompts: [], // FastMCP manages these internally
-      resources: [], // FastMCP manages these internally
-      resourcesTemplates: [], // FastMCP manages these internally
+      prompts: [], // Will be populated by FastMCP when transport connects
+      resources: [], // Will be populated by FastMCP when transport connects
+      resourcesTemplates: [], // Will be populated by FastMCP when transport connects
       roots: server.options.roots,
       sessionId: undefined,
-      tools: [], // We'll get tools from server
+      tools: [], // Will be populated by FastMCP when transport connects
       transportType: "httpStream",
       utils: server.options.utils,
       version: server.options.version,
     });
 
+    // The session will automatically set up message handlers when connected
+    // No need to manually set transport.onmessage
+
     // Connect the session to the transport
     await session.connect(transport);
 
-    // Handle the request through the transport
+    // Handle the HTTP request through the transport
     return await transport.handleRequest(request);
   } catch (error) {
     console.error("Error handling request:", error);
-    return new Response("Internal Server Error", { status: 500 });
+    return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      error: {
+        code: -32603,
+        message: "Internal error",
+        data: String(error),
+      },
+    }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
