@@ -1,4 +1,4 @@
-import { server } from "../src/server";
+import { server } from "../src/server.js";
 
 export const runtime = "edge";
 
