@@ -11,34 +11,40 @@ export default async function handler(request: Request): Promise<Response> {
   });
 
   try {
-    // We need to get tools, prompts, and resources from the server
-    // Since FastMCP doesn't expose them directly, we'll create a minimal session
-    // The session will be set up when we connect the transport
+    // Create a session with empty arrays - FastMCP will need to populate these
+    // but since we can't access FastMCP's internal tools/prompts/resources,
+    // we'll create a minimal session
     const session = new FastMCPSession({
       auth: undefined,
       instructions: server.options.instructions,
       logger: server.options.logger || console,
       name: server.options.name,
       ping: server.options.ping,
-      prompts: [], // Will be populated by FastMCP when transport connects
-      resources: [], // Will be populated by FastMCP when transport connects
-      resourcesTemplates: [], // Will be populated by FastMCP when transport connects
+      prompts: [],
+      resources: [],
+      resourcesTemplates: [],
       roots: server.options.roots,
       sessionId: undefined,
-      tools: [], // Will be populated by FastMCP when transport connects
+      tools: [],
       transportType: "httpStream",
       utils: server.options.utils,
       version: server.options.version,
     });
 
-    // The session will automatically set up message handlers when connected
-    // No need to manually set transport.onmessage
-
     // Connect the session to the transport
     await session.connect(transport);
 
-    // Handle the HTTP request through the transport
-    return await transport.handleRequest(request);
+    // Create a new Request object to ensure it has proper Web Standard structure
+    // This might help if Vercel's Request object has some quirks
+    const normalizedRequest = new Request(request.url, {
+      method: request.method,
+      headers: request.headers,
+      body: request.body,
+      redirect: request.redirect,
+    });
+
+    // Handle the request through the transport
+    return await transport.handleRequest(normalizedRequest);
   } catch (error) {
     console.error("Error handling request:", error);
     return new Response(JSON.stringify({
