@@ -10,14 +10,11 @@ const inputSchema = z.object({
   name: z.string().optional()
 });
 
-server.tool(
-  "hello",
-  {
-    input: inputSchema
-  },
-  async ({ name }: z.infer<typeof inputSchema>) => {
-    return {
-      message: `Hei ${name ?? "verden"} 👋`
-    };
+server.addTool({
+  name: "hello",
+  description: "Say hello",
+  parameters: inputSchema,
+  execute: async ({ name }: z.infer<typeof inputSchema>) => {
+    return `Hei ${name ?? "verden"} 👋`;
   }
-);
+});
