@@ -6,14 +6,16 @@ export const server = new FastMCP({
   version: "0.0.1"
 });
 
+const inputSchema = z.object({
+  name: z.string().optional()
+});
+
 server.tool(
   "hello",
   {
-    input: z.object({
-      name: z.string().optional()
-    })
+    input: inputSchema
   },
-  async ({ name }) => {
+  async ({ name }: z.infer<typeof inputSchema>) => {
     return {
       message: `Hei ${name ?? "verden"} 👋`
     };
